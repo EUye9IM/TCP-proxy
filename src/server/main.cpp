@@ -25,12 +25,12 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << "This is server." << std::endl;
-	std::cout << "daemon : " << (p.get("daemon").Exist ? "yes" : "no")
+	std::cout << "daemon     : " << (p.get("daemon").Exist ? "yes" : "no")
 			  << std::endl;
-	std::cout << "port : " << p.get("port").Int << std::endl;
-	std::cout << "proxy_ip : " << p.get("proxy_ip").Str << std::endl;
+	std::cout << "port       : " << p.get("port").Int << std::endl;
+	std::cout << "proxy_ip   : " << p.get("proxy_ip").Str << std::endl;
 	std::cout << "proxy_port : " << p.get("proxy_port").Int << std::endl;
-	std::cout << "logname : " << p.get("logname").Str << std::endl;
+	std::cout << "logname    : " << p.get("logname").Str << std::endl;
 
 	return 0;
 }
