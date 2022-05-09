@@ -56,3 +56,8 @@ clean:
 	@$(RM) $(BUILD)
 	@echo remove $(EXECUTABLE)
 	@$(RM) $(EXECUTABLE)
+
+# make编译并上传，个性化设计
+upload: all
+	@./upload.sh
+	@echo "编译并上传至代理服务器！"
