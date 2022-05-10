@@ -7,12 +7,12 @@
 
 /**
  * @brief 	连接被代理的服务器
- * @param	port 代理端口
  * @param	proxy_ip 代理服务器地址
  * @param	proxy_port 代理服务器端口
- * @return 	建立的Socket_Connect类指针
+ * @param	myport 连接被代理服务器的端口，-1表示任意端口
+ * @return 	建立的Socket_Connect类指针，之所以返回指针，是为防止调用析构函数close(fd)
  **/
-Anakin::Socket_Connect* connect_proxied_server(int port, std::string proxy_ip, int proxy_port);
+Anakin::Socket_Connect* connect_proxied_server(std::string proxy_ip, int proxy_port, int myport=-1);
 
 int main(int argc, char **argv) {
 	agps::Parser p;
@@ -49,12 +49,11 @@ int main(int argc, char **argv) {
 	int proxy_port = p.get("proxy_port").Int;
 
 	std::cout << "被代理服务器 " << proxy_ip << ":" << proxy_port << std::endl;
-	auto client_socket = connect_proxied_server(port, proxy_ip, proxy_port);
+	auto client_socket = connect_proxied_server(proxy_ip, proxy_port);
 	std::cout << "connect 成功" << std::endl;
 
 	/* 配置代理服务端 */
 	std::cout << "代理服务端启动..." << std::endl;
-	Anakin::Socket_Accept proxy_server(AF_INET, SOCK_STREAM, 0);
 	Anakin::Socket_Accept server_socket(AF_INET, SOCK_STREAM, 0);
 
 	// 设置地址复用
@@ -78,8 +77,8 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-// 之所以返回指针，是为防止调用析构函数close(fd)
-Anakin::Socket_Connect* connect_proxied_server(int port, std::string proxy_ip, int proxy_port)
+
+Anakin::Socket_Connect* connect_proxied_server(std::string proxy_ip, int proxy_port, int myport)
 {
 	/* 首先作为代理服务器连接测试网站 */
 	auto client_socket = new Anakin::Socket_Connect(AF_INET, SOCK_STREAM, 0);
@@ -88,12 +87,15 @@ Anakin::Socket_Connect* connect_proxied_server(int port, std::string proxy_ip, i
 	client_socket->SetSocketBlockingEnable(false);
 
 	struct sockaddr_in client_addr;
-
-	// bind client端口
-	client_addr.sin_family = AF_INET;
-	client_addr.sin_addr.s_addr = INADDR_ANY;
-	client_addr.sin_port = htons(port);
-	client_socket->Bind((struct sockaddr *)&client_addr, sizeof(client_addr));
+	
+	// 如果 myport 在参数中输入
+	if (myport != -1) {
+		// bind client端口
+		client_addr.sin_family = AF_INET;
+		client_addr.sin_addr.s_addr = INADDR_ANY;
+		client_addr.sin_port = htons(myport);
+		client_socket->Bind((struct sockaddr *)&client_addr, sizeof(client_addr));
+	}
 
 	// 非阻塞方式连接
 	int ret = client_socket->Connect(proxy_ip, proxy_port, false);
