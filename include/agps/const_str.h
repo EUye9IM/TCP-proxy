@@ -8,6 +8,7 @@ public:
 	ConstStr(const char *str);
 	~ConstStr();
 	void set(const char *str);
+	void append(const char *str);
 	const char *cstr() const;
 
 private:

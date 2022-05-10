@@ -15,8 +15,14 @@ int main(int argc, char **argv) {
 	p.add(agps::Type::STR, 'd', "dstfile", "目的文件名");
 	p.add(agps::Type::STR, 's', "srcfile", "本地源文件目录");
 	p.parse(argc, (const char **)argv);
+	if (p.isExist("help")) {
+		p.printUsage();
+		return 0;
+	}
 	if (!p.success() || p.isExist("help")) {
-		p.printUsage(argv[0]);
+		std::cout << "Error:" << std::endl;
+		std::cout << p.error() << std::endl;
+		p.printUsage();
 		return 0;
 	}
 

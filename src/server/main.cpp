@@ -46,8 +46,14 @@ int main(int argc, char **argv) {
 		  "日志文件名（全路径） [/var/log/tcp-proxy-server.log]", false,
 		  agps::Value{.Str = "/var/log/tcp-proxy-server.log"});
 	p.parse(argc, (const char **)argv);
+	if (p.isExist("help")) {
+		p.printUsage();
+		return 0;
+	}
 	if (!p.success() || p.isExist("help")) {
-		p.printUsage(argv[0]);
+		std::cout << "Error:" << std::endl;
+		std::cout << p.error() << std::endl;
+		p.printUsage();
 		return 0;
 	}
 
