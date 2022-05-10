@@ -61,8 +61,11 @@ socketÀà²¢Ã»ÓÐ¶Ô·Ç×èÈûµÄº¯Êý½øÐÐ·â×°£¬Ö»ÊÇÌá¹©ÁËgetfdº¯Êý»ñÈ¡ÃèÊö·û£¬ÆäÓà²Ù×÷×Ô¶
 
 µ±È»£¬ÄãÒ²¿ÉÒÔÊ¹ÓÃsetfdÉèÖÃsocketµÄÃèÊö·û£¬µ«ÊÇ´ËÊ±²»¿ÉÒÔÔÙ»ñÈ¡Á¬½ÓµÄµØÖ·£¬ÉèÖÃ¹¦ÄÜÓÐÐ§
 
-`getfd`Äã¿ÉÒÔ»ñÈ¡µ½×îÐÂµÄsocket£¬ÕâÒâÎ¶×Åserver¶ËacceptºóÃèÊö·ûÎªÐÂµÄÃèÊö·û£¬ËùÒÔ£¬²»ÒªÍü¼Ç**±£ÁôlistenµÄÃèÊö·û**.
+## Socket_AcceptÀàËµÃ÷
+¹ØÓÚSocket_AcceptÀà£¬´ËÀàÎ¬»¤Ò»¸ölistenfd½ÓÊÕÁ¬½Ó£¬µ±acceptºó£¬ÐÂµÄfd»á·µ»Ø£¬²¢´æ´¢ÔÚÀàÖÐµÄmapÖÐ£¬¾ßÌå¿ÉÒÔ²é¿´
 
+## ¹ØÓÚÃèÊö·ûµÄ¹Ø±Õ
+Ä¿Ç°ÒÑ¾­¶¨ÒåÁËÎö¹¹º¯Êý¹Ø±ÕÃèÊö·û£¬°üÀ¨Socket_AcceptÖÐµÄÁ¬½ÓµÄ¿Í»§¶ËsocketÒ²ÔÚÎö¹¹º¯ÊýÖÐÓÐ¹Ø±Õ´¦Àí¡£
 
 ## ÆäËû
 Í·ÎÄ¼þ»¹ÓÐÆäËûº¯Êý£¬±ÈÈçcheckerrorº¯Êý£¬ÅÐ¶ÏÄ³¸ö·µ»ØÖµÊÇ·ñ<0£¬ÈôÊÇ£¬Ôòperror´òÓ¡²¢ÍË³ö¡£

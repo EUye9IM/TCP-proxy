@@ -2,7 +2,17 @@
 #include <agps/check.h>
 
 #include <iostream>
+#include <ostream>
 #include "mysocket.hpp"
+
+/**
+ * @brief 	连接被代理的服务器
+ * @param	port 代理端口
+ * @param	proxy_ip 代理服务器地址
+ * @param	proxy_port 代理服务器端口
+ * @return 	建立的Socket_Connect类指针
+ **/
+Anakin::Socket_Connect* connect_proxied_server(int port, std::string proxy_ip, int proxy_port);
 
 int main(int argc, char **argv) {
 	agps::Parser p;
@@ -38,11 +48,44 @@ int main(int argc, char **argv) {
 	std::string proxy_ip = p.get("proxy_ip").Str;
 	int proxy_port = p.get("proxy_port").Int;
 
-	/* 首先作为代理服务器连接测试网站 */
-	Anakin::Socket_Connect client_socket(AF_INET, SOCK_STREAM, 0);
+	std::cout << "被代理服务器 " << proxy_ip << ":" << proxy_port << std::endl;
+	auto client_socket = connect_proxied_server(port, proxy_ip, proxy_port);
+	std::cout << "connect 成功" << std::endl;
 
+	/* 配置代理服务端 */
+	std::cout << "代理服务端启动..." << std::endl;
+	Anakin::Socket_Accept proxy_server(AF_INET, SOCK_STREAM, 0);
+	Anakin::Socket_Accept server_socket(AF_INET, SOCK_STREAM, 0);
+
+	// 设置地址复用
+	int opt = 1;
+	server_socket.setopt(SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
 	// 首先设置为非阻塞方式
-	client_socket.SetSocketBlockingEnable(false);
+	server_socket.SetSocketBlockingEnable(false);
+
+	struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+
+	address.sin_addr.s_addr = INADDR_ANY;
+
+	server_socket.Bind((struct sockaddr*)&address, sizeof(address));
+	server_socket.Listen(3);
+	std::cout << "listen..." << std::endl;
+
+
+	delete client_socket;
+	return 0;
+}
+
+// 之所以返回指针，是为防止调用析构函数close(fd)
+Anakin::Socket_Connect* connect_proxied_server(int port, std::string proxy_ip, int proxy_port)
+{
+	/* 首先作为代理服务器连接测试网站 */
+	auto client_socket = new Anakin::Socket_Connect(AF_INET, SOCK_STREAM, 0);
+
+	// 设置为非阻塞方式
+	client_socket->SetSocketBlockingEnable(false);
 
 	struct sockaddr_in client_addr;
 
@@ -50,11 +93,11 @@ int main(int argc, char **argv) {
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_addr.s_addr = INADDR_ANY;
 	client_addr.sin_port = htons(port);
-	client_socket.Bind((struct sockaddr *)&client_addr, sizeof(client_addr));
+	client_socket->Bind((struct sockaddr *)&client_addr, sizeof(client_addr));
 
 	// 非阻塞方式连接
-	int ret = client_socket.Connect(proxy_ip, proxy_port, false);
-	int sockfd = client_socket.getfd();
+	int ret = client_socket->Connect(proxy_ip, proxy_port, false);
+	int sockfd = client_socket->getfd();
 	
     if (ret == -1 && errno == EINPROGRESS) {
         // 正在建立连接
@@ -77,7 +120,5 @@ int main(int argc, char **argv) {
         }
     }
 
-	std::cout << "connect 成功" << std::endl;
-
-	return 0;
+	return client_socket;
 }

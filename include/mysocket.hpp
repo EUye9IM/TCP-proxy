@@ -1,23 +1,32 @@
 #ifndef _MYSOCKET_HPP_
 #define _MYSOCKET_HPP_
 
+#include <cerrno>
+#include <cstdio>
 #include <iostream>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <cstring>
 #include <unistd.h>
 #include <linux/if_link.h>
+#include <utility>
 #include <vector>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <map>
 
 namespace Anakin {
     class Socket_Base {
     public:
         Socket_Base(int _domain, int _type, int _protocol);
-        ~Socket_Base() {};
+        /* 析构函数关闭fd描述符 */
+        ~Socket_Base() {
+            close(fd);
+        }
+
         /* 获取socket描述符 */
         int getfd() {return fd;}
 
@@ -137,23 +146,39 @@ namespace Anakin {
     class Socket_Accept : public Socket_Listen {
     public:
         using Socket_Listen::Socket_Listen;
+        using conns = std::map<int, sockaddr_in>;
+
         ~Socket_Accept();
         int Accept();
         // 获取连接关系
         sockaddr_in GetConn();
+
+        // 获取所有客户端的连接关系
+        conns GetConns() {
+            return client_conns;
+        }
+
+        // 删除某个客户端连接
+        void EraseConn(int socketfd) {
+            close(socketfd);
+            client_conns.erase(socketfd);
+        }
+        
     
     protected:
         int sfd;            // 接收后的socket描述符，临时接收，随之与fd交换
         sockaddr_in client_addr;          // 连接客户端的地址
-
+        
+        std::map<int, sockaddr_in> client_conns;    // 考虑到多客户端连接的情况，使用map存储
     };
 
     inline Socket_Accept::~Socket_Accept()
     {
-        // close(fd);
-        // perror("close server socket");
-        // close(sfd);
-        // perror("close socket");
+        // 关闭所有的客户端fd
+        for (auto &conn : client_conns)
+            close(conn.first);
+        // 清空map
+        client_conns.clear();
     }
 
     inline int Socket_Accept::Accept()
@@ -166,9 +191,14 @@ namespace Anakin {
         //     exit(EXIT_FAILURE);
         // }
         sfd = accept(fd, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
+
+        // 需要将新的客户端的连接信息存储
+        client_conns.insert(std::make_pair(sfd, client_addr));
+
+        /* 因为考虑到多客户端的连接，修改Socket_Accept维护的描述符 */
         // 交换socket描述符，使fd指向最新
-        std::swap(fd, sfd);
-        return fd;
+        // std::swap(fd, sfd);
+        return sfd;
     }
 
     inline sockaddr_in Socket_Accept::GetConn() {
@@ -186,6 +216,11 @@ namespace Anakin {
         int Connect(const std::string _server_ip, int _server_port, bool blocking=true);
         // 获取连接的服务端的信息
         sockaddr_in GetConn();
+
+        // 获取服务端地址
+        sockaddr_in GetServer() {
+            return server_addr;
+        }
     
     protected:
         sockaddr_in client_addr;            // 客户端用于绑定的地址
@@ -195,8 +230,7 @@ namespace Anakin {
 
     inline Socket_Connect::~Socket_Connect()
     {
-        // close(fd);
-        // perror("close client socket");
+
     }
 
     inline sockaddr_in Socket_Connect::GetConn()
@@ -212,7 +246,7 @@ namespace Anakin {
         }
         memcpy(&client_addr, _client_addr, _len);
     }
-        
+    
     inline int Socket_Connect::Connect(const sockaddr *_server_addr, socklen_t _len, bool blocking)
     {   
         int ret = connect(fd, _server_addr, _len);
