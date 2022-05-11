@@ -1,5 +1,6 @@
 #ifndef SERVER_CONNECTION
 #define SERVER_CONNECTION
+#include <cstddef>
 #include <set>
 
 class Connection {
@@ -55,14 +56,22 @@ namespace New {
 	// Connect本身为单向连接，但是其内部指针对应另一端
 	class Connection {
 	public:
+		Connection(int _fd);
+		~Connection();
+		
+		/* connection初始化 */
+		void init_connection();
+		void build_connection(int sfd);	// 在fd和sfd之间建立连接
+		// void delete_connection();		// 删除fd对应的连接，包括other指向的
+		void close_pipes();		// 关闭pipe
+		bool write_to_buf();	// fd向buf写数据
+		bool read_from_buf();	// 从other->buf读数据至fd
+	
+	private:
+		static const size_t BUF_SIZE = 1024;
 		Connection* other;	// 连接的另一端 	this->other other->this
 		int fd;
-		struct buffer;		// buffer也是单向的，方向为fd写入buf
-		
-		void build_connection(int fd, int sfd);	// 在fd和sfd之间建立连接
-		void delete_connection(int fd);		// 删除fd对应的连接，包括other指向的
-		bool write_buf();	// fd向buf写数据
-		bool read_buf();	// 从other->buf读数据至fd
+		struct buffer buf;		// buffer也是单向的，方向为fd写入buf
 	};
 
 };
