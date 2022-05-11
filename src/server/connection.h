@@ -46,4 +46,24 @@ private:
 	int _fd_c;				   // 客户端 socket
 };
 
+// 新的Connection设计
+namespace New {
+	struct buffer {
+		int pipe[2];
+		size_t len;
+	};
+	// Connect本身为单向连接，但是其内部指针对应另一端
+	class Connection {
+	public:
+		Connection* other;	// 连接的另一端 	this->other other->this
+		int fd;
+		struct buffer;		// buffer也是单向的，方向为fd写入buf
+		
+		void build_connection(int fd, int sfd);	// 在fd和sfd之间建立连接
+		void delete_connection(int fd);		// 删除fd对应的连接，包括other指向的
+		bool write_buf();	// fd向buf写数据
+		bool read_buf();	// 从other->buf读数据至fd
+	};
+
+};
 #endif

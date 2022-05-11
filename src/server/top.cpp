@@ -4,14 +4,14 @@ void Top::run(){
 	while(1){
 		// epoll
 
-		// æ‹¿ fd æ£€æŸ¥ã€‚
+		// ÄÃ fd ¼ì²é¡£
 		//    Connection::run()
 		// or delete Connection
 		// or accept(); new Connection
 
-		// å¦‚æœæ˜¯ connection runï¼Œfd_setä¸­ç§»é™¤ç›¸å…³fdï¼Œå†è°ƒç”¨Connection::fdSet()æ‹¿å–æ–°çš„
-		// å…¶ä»–æƒ…å†µä¹Ÿæœ‰ fd_set çš„å˜åŠ¨
+		// Èç¹ûÊÇ connection run£¬fd_setÖĞÒÆ³ıÏà¹Øfd£¬ÔÙµ÷ÓÃConnection::fdSet()ÄÃÈ¡ĞÂµÄ
+		// ÆäËûÇé¿öÒ²ÓĞ fd_set µÄ±ä¶¯
 
-		// ä»¥ fd_set_read å’Œ fd_set_write æ›´æ–°epollç”¨çš„é˜Ÿåˆ—
+		// ÒÔ fd_set_read ºÍ fd_set_write ¸üĞÂepollÓÃµÄ¶ÓÁĞ
 	}
 }

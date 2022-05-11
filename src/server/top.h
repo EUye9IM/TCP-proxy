@@ -2,6 +2,7 @@
 #define SERVER_TOP
 
 #include "connection.h"
+#include "mysocket.hpp"
 
 #include <map>
 #include <set>
@@ -34,4 +35,36 @@ private:
 	// Log _log; // 可能有的 log 类
 };
 
+
+namespace New {
+	class Tcp_Proxy {
+	public:
+		Anakin::Socket_Accept* proxy_server;	// 用于接收客户端
+		int epfd;		// epoll事件标识符
+		void Run();		// 运行函数
+		void new_connection();	// 创建新的connection并加入epoll
+		void delete_connection();	// 删除连接并从epoll删除
+
+	};
+	inline void Tcp_Proxy::Run()
+	{
+		while (1) {
+			// epoll 事件产生
+			/**************************************
+			connection *conn = ptr;
+			if (可读事件)
+				if (fd == listenfd)
+					new_connection();
+				else 
+					conn->write_buf();
+					...错误处理
+			
+			if (可写事件)
+				conn->read_buf();	// buf缓冲数据至fd
+
+			*************************************/
+		}
+
+	}
+};
 #endif
