@@ -1,11 +1,12 @@
 #include <netinet/in.h>
 #include <sys/epoll.h>
 
-#include "top.h"
 #include "mysocket.hpp"
+#include "top.h"
 
-void Top::run(){
-	while(1){
+namespace Old {
+void Top::run() {
+	while (1) {
 
 		// epoll
 
@@ -14,27 +15,26 @@ void Top::run(){
 		// or delete Connection
 		// or accept(); new Connection
 
-		// 如果是 connection run，fd_set中移除相关fd，再调用Connection::fdSet()拿取新的
+		// 如果是 connection
+		// run，fd_set中移除相关fd，再调用Connection::fdSet()拿取新的
 		// 其他情况也有 fd_set 的变动
 
 		// 以 fd_set_read 和 fd_set_write 更新epoll用的队列
 	}
 }
-
+} // namespace Old
 namespace New {
 
 Tcp_Proxy::Tcp_Proxy(std::string _proxy_ip, int _proxy_port, int _port)
-		 : port(_port), proxy_ip(_proxy_ip), proxy_port(_proxy_port)
-{
+	: port(_port), proxy_ip(_proxy_ip), proxy_port(_proxy_port) {
 	init_proxy_server();
 	create_epoll();
-
 }
 
-void Tcp_Proxy::Run()
-{
+void Tcp_Proxy::Run() {
 	while (1) {
-		int nfds = epoll_wait(epfd, events, MAX_EVENTS, 0); // 超时设为0，立刻返回
+		int nfds =
+			epoll_wait(epfd, events, MAX_EVENTS, 0); // 超时设为0，立刻返回
 		if (nfds == -1) {
 			// 被信号中断
 			if (errno == EINTR)
@@ -42,7 +42,7 @@ void Tcp_Proxy::Run()
 			perror("epoll_wait");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		for (int i = 0; i < nfds; ++i) {
 			// 事件可读
 			if (events[i].events & EPOLLIN) {
@@ -55,30 +55,26 @@ void Tcp_Proxy::Run()
 		}
 		// epoll 事件产生
 		/**************************************
-		connection *conn = ptr;
+		Connection *conn = ptr;
 		if (可读事件)
 			if (fd == listenfd)
 				new_connection();
-			else 
+			else
 				conn->write_buf();
 				...错误处理
-		
+
 		if (可写事件)
 			conn->read_buf();	// buf缓冲数据至fd
 
 		*************************************/
 	}
-
 }
 
-
-void Tcp_Proxy::create_epoll()
-{
+void Tcp_Proxy::create_epoll() {
 	/* 下面创建 epoll 实例 */
 	struct epoll_event ev;
 	epfd = epoll_create1(0);
 	Anakin::checkerror(epfd, "epoll_create1");
-
 
 	int listenfd = proxy_server->getfd();
 	ev.data.fd = listenfd; // listenfd
@@ -89,15 +85,13 @@ void Tcp_Proxy::create_epoll()
 	Anakin::checkerror(ret, "epoll_ctl");
 }
 
-void Tcp_Proxy::new_connection()
-{
+void Tcp_Proxy::new_connection() {
 	// 首先accept连接
 	int conn_sock = proxy_server->Accept();
 	if (conn_sock == -1) {
 		// 忽略以下错误，比如客户中止连接、有信号被捕获等
-		if (errno != EAGAIN && errno != ECONNABORTED &&
-			errno != EWOULDBLOCK && errno != EPROTO &&
-			errno != EINTR) {
+		if (errno != EAGAIN && errno != ECONNABORTED && errno != EWOULDBLOCK &&
+			errno != EPROTO && errno != EINTR) {
 			perror("accept");
 			exit(EXIT_FAILURE);
 		}
@@ -106,25 +100,40 @@ void Tcp_Proxy::new_connection()
 		struct sockaddr_in address;
 		char client_ip[INET_ADDRSTRLEN] = {0};
 		address = proxy_server->GetConn();
-		inet_ntop(AF_INET, &address.sin_addr, client_ip,
-					sizeof(client_ip));
-		std::cout << "connect " << client_ip << ":"
-					<< ntohs(address.sin_port) << std::endl;
+		inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
+		std::cout << "connect " << client_ip << ":" << ntohs(address.sin_port)
+				  << std::endl;
 
 		// 设置非阻塞
 		Anakin::SetSocketBlockingEnable(conn_sock, false);
+
+		// 建立一对新 connection
+		Connection *conn_client = new Connection(conn_sock);
+		if (conn_client == NULL) {
+			std::cerr << "new error!" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		// todo: connect 到 被代理服务器
+		Anakin::Socket_Connect *sock_server =
+			new Anakin::Socket_Connect(AF_INET, SOCK_STREAM, 0); 
+		sock_server->Connect(proxy_ip, proxy_port,false);
+		conns.push_back(sock_server);
+		int fd_server = sock_server->getfd();
+		Connection *conn_server = conn_client->build_connection(fd_server);
+
 		// 加入epoll
-		// struct epoll_event ev;
-		// ev.events = EPOLLIN;
-		// ev.data.fd = conn_sock;
-		// ret = epoll_ctl(epfd, EPOLL_CTL_ADD, conn_sock, &ev);
-		// Anakin::checkerror(ret, "epoll_ctl:conn_sock");
+		struct epoll_event ev;
+		ev.data.ptr = conn_client;
+		ev.events = EPOLLIN;
+		int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, conn_sock, &ev);
+		Anakin::checkerror(ret, "epoll_ctl:conn_sock");
+		ev.data.ptr = conn_server;
+		int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd_server, &ev);
+		Anakin::checkerror(ret, "epoll_ctl:conn_sock");
 	}
 }
 
-
-void Tcp_Proxy::init_proxy_server()
-{
+void Tcp_Proxy::init_proxy_server() {
 	proxy_server = new Anakin::Socket_Accept(AF_INET, SOCK_STREAM, 0);
 
 	// 设置地址复用
@@ -142,9 +151,7 @@ void Tcp_Proxy::init_proxy_server()
 	proxy_server->Listen(3);
 }
 
-
-Anakin::Socket_Connect* Tcp_Proxy::connect_proxied_server(int myport) 
-{
+Anakin::Socket_Connect *Tcp_Proxy::connect_proxied_server(int myport) {
 	/* 首先作为代理服务器连接测试网站 */
 	auto client_socket = new Anakin::Socket_Connect(AF_INET, SOCK_STREAM, 0);
 
@@ -192,4 +199,4 @@ Anakin::Socket_Connect* Tcp_Proxy::connect_proxied_server(int myport)
 	return client_socket;
 }
 
-};
+}; // namespace New

@@ -8,6 +8,8 @@
 #include <map>
 #include <set>
 #include <sys/epoll.h>
+
+namespace Old {
 class Top {
 public: // 可能需要其他参数
 	Top();
@@ -36,7 +38,7 @@ private:
 	// std::map<int, Connection*>//socket 到 Connection 的映射
 	// Log _log; // 可能有的 log 类
 };
-
+}
 
 namespace New {
 	class Tcp_Proxy {

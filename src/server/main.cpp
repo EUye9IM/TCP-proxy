@@ -3,13 +3,11 @@
 #include <agps/agps.h>
 #include <agps/check.h>
 
-
-
 int main(int argc, char **argv) {
 	// Top top;
 	// // 初始化
 	// top.run();
-		
+
 	agps::Parser p;
 	p.add(agps::Type::FLAG, 'h', "help", "输出参数列表");
 	p.add(agps::Type::FLAG, 'd', "daemon", "成为守护进程");
@@ -50,6 +48,7 @@ int main(int argc, char **argv) {
 	int proxy_port = p.get("proxy_port").Int;
 	auto tcp_proxy = new New::Tcp_Proxy(proxy_ip, proxy_port, port);
 	tcp_proxy->Run();
-	
+	delete tcp_proxy;
+
 	return 0;
 }
