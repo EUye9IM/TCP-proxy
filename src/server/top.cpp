@@ -5,31 +5,39 @@
 #include "mysocket.hpp"
 #include "top.h"
 
-namespace Old {
-void Top::run() {
-	while (1) {
+// namespace Old {
+// void Top::run() {
+// 	while (1) {
 
-		// epoll
+// 		// epoll
 
-		// 拿 fd 检查。
-		//    Connection::run()
-		// or delete Connection
-		// or accept(); new Connection
+// 		// 拿 fd 检查。
+// 		//    Connection::run()
+// 		// or delete Connection
+// 		// or accept(); new Connection
 
-		// 如果是 connection
-		// run，fd_set中移除相关fd，再调用Connection::fdSet()拿取新的
-		// 其他情况也有 fd_set 的变动
+// 		// 如果是 connection
+// 		// run，fd_set中移除相关fd，再调用Connection::fdSet()拿取新的
+// 		// 其他情况也有 fd_set 的变动
 
-		// 以 fd_set_read 和 fd_set_write 更新epoll用的队列
-	}
-}
-} // namespace Old
+// 		// 以 fd_set_read 和 fd_set_write 更新epoll用的队列
+// 	}
+// }
+// } // namespace Old
 namespace New {
 
 Tcp_Proxy::Tcp_Proxy(std::string _proxy_ip, int _proxy_port, int _port)
 	: port(_port), proxy_ip(_proxy_ip), proxy_port(_proxy_port) {
+
 	init_proxy_server();
 	create_epoll();
+	epoll_add_listenfd();
+
+}
+
+Tcp_Proxy::~Tcp_Proxy()
+{
+
 }
 
 void Tcp_Proxy::Run() {
@@ -45,61 +53,58 @@ void Tcp_Proxy::Run() {
 		}
 
 		for (int i = 0; i < nfds; ++i) {
+			// 获取连接指针信息，NULL则continue
+			auto conn = (Connection*)events[i].data.ptr;
+			if (conn == NULL)
+				continue;
+
+			// 此处需要添加挂断等事件
+			
 			// 事件可读
 			if (events[i].events & EPOLLIN) {
 				// listenfd 连接处理
-				if (events[i].data.fd == proxy_server->getfd()) {
+				if (conn->get_fd() == proxy_server->getfd()) {
+					std::cout << "listenfd 可读" << std::endl;
 					new_connection();
-				}
-				auto conn = (Connection*)events[i].data.ptr;
-				// 如果为NULL，说明已经对端已经移除
-				if (conn == NULL)
 					continue;
-				
-				conn->write_to_buf();
+				}
+				// clientfd 连接处理
+				else {
+					conn->write_to_buf();
+				}
 			}
 			// 事件可写
 			if (events[i].events & EPOLLOUT) {
-				auto conn = (Connection*)events[i].data.ptr;
-				// 如果为NULL，说明已经对端已经移除
-				if (conn == NULL)
-					continue;
-				
 				conn->read_from_buf();
 			}
-
-			// 事件可写
 		}
-		// epoll 事件产生
-		/**************************************
-		Connection *conn = ptr;
-		if (可读事件)
-			if (fd == listenfd)
-				new_connection();
-			else
-				conn->write_buf();
-				...错误处理
-
-		if (可写事件)
-			conn->read_buf();	// buf缓冲数据至fd
-
-		*************************************/
 	}
 }
 
 void Tcp_Proxy::create_epoll() {
 	/* 下面创建 epoll 实例 */
-	struct epoll_event ev;
 	epfd = epoll_create1(0);
 	Anakin::checkerror(epfd, "epoll_create1");
+}
 
+void Tcp_Proxy::epoll_add_listenfd()
+{
+	struct epoll_event ev;
 	int listenfd = proxy_server->getfd();
-	ev.data.fd = listenfd; // listenfd
+
+	// 创建连接，listen连接的other为NULL
+	auto conn = new Connection(listenfd);
+	if (conn == NULL) {
+		std::cerr << "new connection error!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	ev.data.ptr = conn;
 	ev.events = EPOLLIN;   // 使用水平触发模式
 
 	// 设置epoll事件
 	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, listenfd, &ev);
-	Anakin::checkerror(ret, "epoll_ctl");
+	Anakin::checkerror(ret, "epoll_ctl listen");
 }
 
 void Tcp_Proxy::new_connection() {
@@ -132,15 +137,24 @@ void Tcp_Proxy::new_connection() {
 
 void Tcp_Proxy::delete_connection(Connection* conn)
 {
+	// fd 和 sfd
+	int fd = conn->get_fd();
+	int sfd = conn->get_other()->get_fd();
+
 	// 首先从 epoll 中移除connection
-	int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, conn->get_fd(), NULL);
+	int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
 	Anakin::checkerror(ret, "epoll_ctl:delete");
-	ret = epoll_ctl(epfd, EPOLL_CTL_DEL, conn->get_other()->get_fd(), NULL);
+	ret = epoll_ctl(epfd, EPOLL_CTL_DEL, sfd, NULL);
 	Anakin::checkerror(ret, "epoll_ctl:delete");
 
 	// 目前的设计，释放conn，也会释放conn->other，并置NULL
 	delete conn;
 	conn = NULL;
+
+	// 释放 fd，未完成
+	// proxy_server->EraseConn(fd);
+	// proxy_server->EraseConn(sfd);
+
 }
 
 void Tcp_Proxy::init_proxy_server() {
