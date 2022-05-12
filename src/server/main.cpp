@@ -2,6 +2,7 @@
 #include "top.h"
 #include <agps/agps.h>
 #include <agps/check.h>
+#include <logc/logc.h>
 
 int main(int argc, char **argv) {
 	// Top top;
@@ -34,7 +35,15 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	std::cout << "This is server." << std::endl;
+	LogC::log_open(p.get("logname").Str);
+	
+	LogC::log_println("Server load");
+	LogC::log_printf("daemon     : %s\n",
+					 (p.get("daemon").Exist ? "yes" : "no"));
+	LogC::log_printf("port       : %d\n", p.get("port").Int);
+	LogC::log_printf("proxy_ip   : %s\n", p.get("proxy_ip").Str);
+	LogC::log_printf("proxy_port : %d\n", p.get("proxy_port").Int);
+
 	std::cout << "daemon     : " << (p.get("daemon").Exist ? "yes" : "no")
 			  << std::endl;
 	std::cout << "port       : " << p.get("port").Int << std::endl;

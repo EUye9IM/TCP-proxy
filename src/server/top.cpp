@@ -1,5 +1,6 @@
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <logc/logc.h>
 
 #include "connection.h"
 #include "mysocket.hpp"
@@ -49,6 +50,7 @@ void Tcp_Proxy::Run() {
 			if (errno == EINTR)
 				continue;
 			perror("epoll_wait");
+			LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -96,6 +98,7 @@ void Tcp_Proxy::epoll_add_listenfd()
 	auto conn = new Connection(listenfd);
 	if (conn == NULL) {
 		std::cerr << "new connection error!" << std::endl;
+		LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -117,6 +120,7 @@ void Tcp_Proxy::new_connection() {
 	auto conn = new New::Connection(server_fd);
 	if (conn == NULL) {
 		std::cerr << "new connection error!" << std::endl;
+		LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	conn->build_connection(client_fd);
@@ -184,6 +188,7 @@ int Tcp_Proxy::accept_new_socket()
 		if (errno != EAGAIN && errno != ECONNABORTED && errno != EWOULDBLOCK &&
 			errno != EPROTO && errno != EINTR) {
 			perror("accept");
+			LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	} else {
@@ -194,6 +199,7 @@ int Tcp_Proxy::accept_new_socket()
 		inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
 		std::cout << "connect " << client_ip << ":" << ntohs(address.sin_port)
 				  << std::endl;
+		LogC::log_printf("connect %s:%d\n", client_ip, ntohs(address.sin_port));
 
 		// ÉèÖÃ·Ç×èÈû
 		Anakin::SetSocketBlockingEnable(conn_sock, false);
@@ -233,6 +239,7 @@ int Tcp_Proxy::connect_proxied_server(int myport) {
 		int retval = select(sockfd + 1, NULL, &set, NULL, NULL);
 		if (retval < 0) {
 			perror("select");
+			LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 		if (FD_ISSET(sockfd, &set)) {
@@ -241,6 +248,8 @@ int Tcp_Proxy::connect_proxied_server(int myport) {
 			socklen_t peeraddrlen = sizeof(peeraddr);
 			if (getpeername(sockfd, &peeraddr, &peeraddrlen) == -1) {
 				perror("getpeername");
+				LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__,
+								strerror(errno));
 				exit(EXIT_FAILURE);
 			}
 		}
