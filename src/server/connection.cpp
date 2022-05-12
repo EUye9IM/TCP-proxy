@@ -8,37 +8,42 @@
 #include <iostream>
 #include <sys/epoll.h>
 #include <unistd.h>
-namespace Old {
-void Sending::set(Connection *connection, int (Connection::*func)()) {
-	_conn = connection;
-	_func = func;
-}
-int Sending::send() { return (_conn->*_func)(); }
 
-Connection::Connection(int fd_server, int fd_client, int fd_epoll)
-	: _fd_s(fd_server), _fd_c(fd_client), _fd_ep(fd_epoll) {
-	//初始化 Sending
-	_client_to_server.set(this, Connection::_sendC2S);
-	_server_to_client.set(this, Connection::_sendS2C);
+// namespace Old {
+// void Sending::set(Connection *connection, int (Connection::*func)()) {
+// 	_conn = connection;
+// 	_func = func;
+// }
+// int Sending::send() { return (_conn->*_func)(); }
 
-	// 注册 epoll
-	struct epoll_event ev;
-	ev.events = EPOLLIN; // 使用水平触发模式
-	ev.data.ptr = &(this->_client_to_server);
-	int ret = epoll_ctl(_fd_ep, EPOLL_CTL_ADD, _fd_c, &ev);
-	if (ret < 0) {
-		throw "epoll_ctl eror";
-	}
-	ev.data.ptr = &(this->_server_to_client);
-	int ret = epoll_ctl(_fd_ep, EPOLL_CTL_ADD, _fd_s, &ev);
-	if (ret < 0) {
-		throw "epoll_ctl eror";
-	}
-}
-} // namespace Old
+// Connection::Connection(int fd_server, int fd_client, int fd_epoll)
+// 	: _fd_s(fd_server), _fd_c(fd_client), _fd_ep(fd_epoll) {
+// 	//初始化 Sending
+// 	_client_to_server.set(this, Connection::_sendC2S);
+// 	_server_to_client.set(this, Connection::_sendS2C);
+
+// 	// 注册 epoll
+// 	struct epoll_event ev;
+// 	ev.events = EPOLLIN; // 使用水平触发模式
+// 	ev.data.ptr = &(this->_client_to_server);
+// 	int ret = epoll_ctl(_fd_ep, EPOLL_CTL_ADD, _fd_c, &ev);
+// 	if (ret < 0) {
+// 		throw "epoll_ctl eror";
+// 	}
+// 	ev.data.ptr = &(this->_server_to_client);
+// 	int ret = epoll_ctl(_fd_ep, EPOLL_CTL_ADD, _fd_s, &ev);
+// 	if (ret < 0) {
+// 		throw "epoll_ctl eror";
+// 	}
+// }
+// } // namespace Old
+
 namespace New {
 
-Connection::Connection(int _fd) : fd(_fd) { init_connection(); }
+Connection::Connection(int _fd) : fd(_fd) 
+{ 
+	init_connection(); 
+}
 
 Connection::~Connection() {
 	close_pipes();
@@ -56,6 +61,19 @@ void Connection::init_connection() {
 	}
 	// 初始化长度
 	buf.len = 0;
+
+	// NULL
+	other = NULL;
+}
+
+int Connection::get_fd()
+{
+	return fd;
+}
+
+Connection* Connection::get_other()
+{
+	return other;
 }
 
 Connection *Connection::build_connection(int sfd) {
