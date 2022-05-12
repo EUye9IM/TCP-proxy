@@ -5,14 +5,8 @@
 
 // 旧的Connection设计
 namespace Old {
-class Sending{
-public:
-	void set(Connection *connection, int (Connection::*func)());
-	int send();
-private:
-	Connection *_conn;
-	int (Connection::*_func)();
-};
+
+class Sending;
 class Connection {
 public:
 	/**
@@ -60,6 +54,15 @@ private:
 	 **/
 	int _sendC2S();
 };
+
+class Sending{
+public:
+	void set(Connection *connection, int (Connection::*func)());
+	int send();
+private:
+	Connection *_conn;
+	int (Connection::*_func)();
+};
 } // namespace Old
 
 // 新的Connection设计
@@ -81,6 +84,8 @@ public:
 	void close_pipes();	  // 关闭pipe
 	bool write_to_buf();  // fd向buf写数据
 	bool read_from_buf(); // 从other->buf读数据至fd
+	int get_fd();		  // 获取fd
+	Connection* get_other();	// 获取other
 
 private:
 	static const size_t BUF_SIZE = 1024;

@@ -38,7 +38,10 @@ Connection::Connection(int fd_server, int fd_client, int fd_epoll)
 } // namespace Old
 namespace New {
 
-Connection::Connection(int _fd) : fd(_fd) { init_connection(); }
+Connection::Connection(int _fd) : fd(_fd) 
+{ 
+	init_connection(); 
+}
 
 Connection::~Connection() {
 	close_pipes();
@@ -56,6 +59,19 @@ void Connection::init_connection() {
 	}
 	// 初始化长度
 	buf.len = 0;
+
+	// NULL
+	other = NULL;
+}
+
+int Connection::get_fd()
+{
+	return fd;
+}
+
+Connection* Connection::get_other()
+{
+	return other;
 }
 
 Connection *Connection::build_connection(int sfd) {

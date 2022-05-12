@@ -48,25 +48,34 @@ namespace New {
 
 		
 		void Run();		// 运行函数
-		void new_connection();		// 创建新的connection并加入epoll
-		void delete_connection();	// 删除连接并从epoll删除
+		
 
 	private:
 		static const size_t MAX_EVENTS = 1024;
 
 		/* 初始化代理服务器 */
 		void init_proxy_server();
-		/* 连接被代理服务器 */
-		Anakin::Socket_Connect* connect_proxied_server(int=-1);
+
+		/* accept连接，return 新的socket fd */
+		int accept_new_socket();
+
+		/* 连接被代理服务器，返回fd */
+		int connect_proxied_server(int=-1);
 		
 		/* 创建epoll事件*/
 		void create_epoll();
 
-		int port;		// 处理的端口
+		/* 创建新的connection并加入epoll */
+		void new_connection();	
+
+		/* 删除连接并从epoll删除 */
+		void delete_connection(Connection* conn);	
+
+		int port;				// 处理的端口
 		std::string proxy_ip;	// 代理IP地址
 		int proxy_port;			// 代理端口
 		Anakin::Socket_Accept* proxy_server;	// 用于接收客户端
-		int epfd;		// epoll事件标识符
+		int epfd;				// epoll事件标识符
 		struct epoll_event events[MAX_EVENTS];
 
 		// 存储服务器与代理服务器的连接
