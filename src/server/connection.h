@@ -80,7 +80,9 @@ public:
 	/* connection初始化 */
 	void init_connection();
 	Connection *build_connection(int sfd); // 在fd和sfd之间建立连接
-	// void delete_connection();		// 删除fd对应的连接，包括other指向的
+	
+	/* 删除other */
+	void delete_other();
 	void close_pipes();	  // 关闭pipe
 	bool write_to_buf();  // fd向buf写数据
 	bool read_from_buf(); // 从other->buf读数据至fd

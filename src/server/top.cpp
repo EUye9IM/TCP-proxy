@@ -43,7 +43,7 @@ Tcp_Proxy::~Tcp_Proxy()
 void Tcp_Proxy::Run() {
 	while (1) {
 		int nfds =
-			epoll_wait(epfd, events, MAX_EVENTS, 0); // 超时设为0，立刻返回
+			epoll_wait(epfd, events, MAX_EVENTS, 100);
 		if (nfds == -1) {
 			// 被信号中断
 			if (errno == EINTR)
@@ -59,6 +59,11 @@ void Tcp_Proxy::Run() {
 				continue;
 
 			// 此处需要添加挂断等事件
+			if (events[i].events & (EPOLLERR | EPOLLHUP)) {
+				std::cout << "出现挂断事件" << std::endl;
+				close_connection(conn);
+				continue;
+			}
 			
 			// 事件可读
 			if (events[i].events & EPOLLIN) {
@@ -70,7 +75,10 @@ void Tcp_Proxy::Run() {
 				}
 				// clientfd 连接处理
 				else {
-					conn->write_to_buf();
+					if (!conn->write_to_buf()) {
+						close_connection(conn);
+						continue;
+					}
 				}
 			}
 			// 事件可写
@@ -135,7 +143,7 @@ void Tcp_Proxy::new_connection() {
 
 }
 
-void Tcp_Proxy::delete_connection(Connection* conn)
+void Tcp_Proxy::close_connection(Connection* conn)
 {
 	// fd 和 sfd
 	int fd = conn->get_fd();
@@ -147,14 +155,34 @@ void Tcp_Proxy::delete_connection(Connection* conn)
 	ret = epoll_ctl(epfd, EPOLL_CTL_DEL, sfd, NULL);
 	Anakin::checkerror(ret, "epoll_ctl:delete");
 
-	// 目前的设计，释放conn，也会释放conn->other，并置NULL
+	// 释放conn 以及 conn->other
+	conn->delete_other();
 	delete conn;
 	conn = NULL;
 
-	// 释放 fd，未完成
-	// proxy_server->EraseConn(fd);
-	// proxy_server->EraseConn(sfd);
+	// 释放套接字
+	if (proxy_server->EraseConn(fd)) {
+		// 删除成功，说明fd为服务端，sfd为客户端，删除
+		delete_socket_conn(sfd);
+	} else {
+		proxy_server->EraseConn(sfd);
+		delete_socket_conn(fd);
+	}
 
+	std::cout << "连接中断" << std::endl;
+}
+
+int Tcp_Proxy::delete_socket_conn(int fd)
+{
+	for (auto it = conns.begin(); it != conns.end(); it++) {
+		if ((*it)->getfd() == fd) {
+			delete *it;
+			(*it) = NULL;
+			conns.erase(it);
+			return 1;
+		}
+	}
+	return 0;
 }
 
 void Tcp_Proxy::init_proxy_server() {

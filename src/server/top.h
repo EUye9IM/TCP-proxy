@@ -72,7 +72,10 @@ namespace New {
 		void new_connection();	
 
 		/* 删除连接并从epoll删除 */
-		void delete_connection(Connection* conn);	
+		void close_connection(Connection* conn);	
+
+		/* 删除服务器与代理服务器的连接，并从conns中移除 */
+		int delete_socket_conn(int fd);
 
 		int port;				// 处理的端口
 		std::string proxy_ip;	// 代理IP地址

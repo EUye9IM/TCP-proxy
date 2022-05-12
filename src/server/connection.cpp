@@ -47,8 +47,11 @@ Connection::Connection(int _fd) : fd(_fd)
 
 Connection::~Connection() {
 	close_pipes();
+}
+
+void Connection::delete_other()
+{
 	other->close_pipes();
-	// 此处将other也释放
 	delete other;
 	other = NULL;
 }
@@ -107,12 +110,16 @@ bool Connection::read_from_buf() {
 
 /* fd向buf写数据 */
 bool Connection::write_to_buf() {
+	ssize_t cnt = 0;	// 记录本次从fd中读取的数据
 	for (;;) {
 		ssize_t n = splice(this->fd, NULL, this->buf.pipe[1], NULL, BUF_SIZE,
 						   SPLICE_F_NONBLOCK | SPLICE_F_MOVE);
 
-		if (n > 0)
+		if (n > 0) {
 			this->buf.len += n;
+			cnt += n;
+		}
+			
 		if (n == 0)
 			break;
 
@@ -122,7 +129,9 @@ bool Connection::write_to_buf() {
 			return false;
 		}
 	}
-
+	// 说明连接断开
+	if (cnt == 0)
+		return false;
 	return true;
 }
 void Connection::close_pipes() {

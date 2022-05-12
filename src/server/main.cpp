@@ -2,6 +2,7 @@
 #include "top.h"
 #include <agps/agps.h>
 #include <agps/check.h>
+#include <exception>
 
 int main(int argc, char **argv) {
 	// Top top;
@@ -47,7 +48,14 @@ int main(int argc, char **argv) {
 	std::string proxy_ip = p.get("proxy_ip").Str;
 	int proxy_port = p.get("proxy_port").Int;
 	auto tcp_proxy = new New::Tcp_Proxy(proxy_ip, proxy_port, port);
-	tcp_proxy->Run();
+	try {
+		tcp_proxy->Run();
+
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception caught: " << e.what() << std::endl;
+	}
+	
 	delete tcp_proxy;
 
 	return 0;

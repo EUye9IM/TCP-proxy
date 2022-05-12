@@ -6,6 +6,7 @@
 #include <iostream>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <cstring>
@@ -158,10 +159,13 @@ namespace Anakin {
             return client_conns;
         }
 
-        // 删除某个客户端连接
-        void EraseConn(int socketfd) {
-            close(socketfd);
-            client_conns.erase(socketfd);
+        // 删除某个客户端连接，存在成功返回1，不存在返回0
+        int EraseConn(int socketfd) {
+            if (client_conns.erase(socketfd)) {
+                close(socketfd);
+                return 1;
+            }
+            return 0;
         }
         
     
