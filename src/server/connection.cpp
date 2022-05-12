@@ -4,8 +4,10 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <logc/logc.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 
@@ -40,10 +42,7 @@
 
 namespace New {
 
-Connection::Connection(int _fd) : fd(_fd) 
-{ 
-	init_connection(); 
-}
+Connection::Connection(int _fd) : fd(_fd) { init_connection(); }
 
 Connection::~Connection() {
 	close_pipes();
@@ -60,6 +59,7 @@ void Connection::init_connection() {
 	// 首先创建管道
 	if (pipe2(buf.pipe, O_NONBLOCK) < 0) {
 		perror("pipe2");
+		LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	// 初始化长度
@@ -69,21 +69,16 @@ void Connection::init_connection() {
 	other = NULL;
 }
 
-int Connection::get_fd()
-{
-	return fd;
-}
+int Connection::get_fd() { return fd; }
 
-Connection* Connection::get_other()
-{
-	return other;
-}
+Connection *Connection::get_other() { return other; }
 
 Connection *Connection::build_connection(int sfd) {
 	// 与sfd形成连接
 	this->other = new Connection(sfd);
 	if (this->other == NULL) {
 		std::cerr << "new error!" << std::endl;
+		LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	other->other = this;
