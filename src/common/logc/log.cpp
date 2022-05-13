@@ -27,6 +27,11 @@ int log_open(const char *file_path) {
 	log_set(_FALG_DEFAULT);
 	return OK;
 }
+int log_open(FILE *file) {
+	_file = file;
+	log_set(_FALG_DEFAULT);
+	return OK;
+}
 int log_set(int add_attr, int rm_attr) {
 	_flag &= ~rm_attr;
 	_flag |= add_attr;
@@ -106,10 +111,12 @@ static void _log_head() {
 	}
 
 	if (_flag & LOG_FLAG_DATE) {
-		fprintf(_file, "%04d/%02d/%02d ", c_tm->tm_year+1900, c_tm->tm_mon+1, c_tm->tm_mday);
+		fprintf(_file, "%04d/%02d/%02d ", c_tm->tm_year + 1900,
+				c_tm->tm_mon + 1, c_tm->tm_mday);
 	}
 	if (_flag & LOG_FLAG_TIME) {
-		fprintf(_file, "%02d:%02d:%02d ", c_tm->tm_hour, c_tm->tm_min, c_tm->tm_sec);
+		fprintf(_file, "%02d:%02d:%02d ", c_tm->tm_hour, c_tm->tm_min,
+				c_tm->tm_sec);
 	}
 }
 } // namespace LogC
