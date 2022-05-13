@@ -1,5 +1,6 @@
 #include "connection.h"
 #include "top.h"
+#include <mydaemon.h>
 #include <agps/agps.h>
 #include <agps/check.h>
 #include <exception>
@@ -36,6 +37,11 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	/* 是否启用守护进程 */
+	if (p.get("daemon").Exist) {
+		my_daemon(0);
+	}
+
 	LogC::log_open(p.get("logname").Str);
 	
 	LogC::log_println("Server load");
@@ -59,7 +65,6 @@ int main(int argc, char **argv) {
 	auto tcp_proxy = new New::Tcp_Proxy(proxy_ip, proxy_port, port);
 	try {
 		tcp_proxy->Run();
-
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception caught: " << e.what() << std::endl;

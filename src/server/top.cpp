@@ -38,7 +38,11 @@ Tcp_Proxy::Tcp_Proxy(std::string _proxy_ip, int _proxy_port, int _port)
 
 Tcp_Proxy::~Tcp_Proxy()
 {
+	delete proxy_server;
+	proxy_server = NULL;
 
+	close(epfd);
+	conns.clear();
 }
 
 void Tcp_Proxy::Run() {
@@ -71,7 +75,7 @@ void Tcp_Proxy::Run() {
 			if (events[i].events & EPOLLIN) {
 				// listenfd 连接处理
 				if (conn->get_fd() == proxy_server->getfd()) {
-					std::cout << "listenfd 可读" << std::endl;
+					// std::cout << "listenfd 可读" << std::endl;
 					new_connection();
 					continue;
 				}
@@ -85,7 +89,9 @@ void Tcp_Proxy::Run() {
 			}
 			// 事件可写
 			if (events[i].events & EPOLLOUT) {
-				conn->read_from_buf();
+				if (!conn->read_from_buf()) {
+					conn->close_pipes();
+				}
 			}
 		}
 	}
@@ -121,6 +127,12 @@ void Tcp_Proxy::epoll_add_listenfd()
 void Tcp_Proxy::new_connection() {
 	// 代理服务器连接客户端
 	int server_fd = accept_new_socket();
+	if (server_fd == -1) {
+		// 因为某种原因中断
+		std::cout << "accept 失败" << std::endl;
+		return;
+	}
+
 	// 代理服务器连接服务器
 	int client_fd = connect_proxied_server();
 
@@ -136,12 +148,12 @@ void Tcp_Proxy::new_connection() {
 	// 加入epoll
 	struct epoll_event ev;
 	ev.data.ptr = conn;
-	ev.events = EPOLLIN | EPOLLOUT;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, server_fd, &ev);
 	Anakin::checkerror(ret, "epoll_ctl:conn_sock");
 
 	ev.data.ptr = conn->get_other();
-	ev.events = EPOLLIN | EPOLLOUT;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	ret = epoll_ctl(epfd, EPOLL_CTL_ADD, client_fd, &ev);
 	Anakin::checkerror(ret, "epoll_ctl:conn_sock");
 
@@ -149,6 +161,11 @@ void Tcp_Proxy::new_connection() {
 
 void Tcp_Proxy::close_connection(Connection* conn)
 {
+	if (conn->get_other() == NULL) {
+		// 目前还没有遇到这种情形
+		std::cout << "conn other null" << std::endl;
+		return;
+	}
 	// fd 和 sfd
 	int fd = conn->get_fd();
 	int sfd = conn->get_other()->get_fd();
@@ -173,7 +190,7 @@ void Tcp_Proxy::close_connection(Connection* conn)
 		delete_socket_conn(fd);
 	}
 
-	std::cout << "连接中断" << std::endl;
+	// std::cout << "连接中断" << std::endl;
 }
 
 int Tcp_Proxy::delete_socket_conn(int fd)

@@ -51,7 +51,7 @@ namespace New {
 		
 
 	private:
-		static const size_t MAX_EVENTS = 1024;
+		static const size_t MAX_EVENTS = 10240;
 
 		/* 初始化代理服务器 */
 		void init_proxy_server();

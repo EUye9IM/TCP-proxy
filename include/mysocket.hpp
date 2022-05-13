@@ -197,7 +197,8 @@ namespace Anakin {
         sfd = accept(fd, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
 
         // 需要将新的客户端的连接信息存储
-        client_conns.insert(std::make_pair(sfd, client_addr));
+        if (sfd > 0)
+            client_conns.insert(std::make_pair(sfd, client_addr));
 
         /* 因为考虑到多客户端的连接，修改Socket_Accept维护的描述符 */
         // 交换socket描述符，使fd指向最新
