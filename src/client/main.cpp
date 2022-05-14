@@ -39,43 +39,49 @@ int main(int argc, char **argv) {
 	log_printf("dstfile : %s\n", p.get("dstfile").Str);
 	log_printf("srcfile : %s\n", p.get("srcfile").Str);
 
-	httplib::Client cli("http://"s + p.get("ip").Str) ;
-	// 获取登录表单
+	httplib::Client cli("http://"s + p.get("ip").Str + ":" +
+						to_string(p.get("port").Int));
+	string cookie;
+	// 获取登录的 cookie
 	{
-		auto res = cli.Get("/");
-		log_debug("%d\n", res->has_header("Set-Cookie"));
-		log_debug("%s\n", res->body.c_str());
-	}
-	// log_printf("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// log_printf("%s\n",  http.result_data().c_str());
+		const char route[] = "/";
+		auto res = cli.Get(route);
+		// cookie
+		if (res->status != 200) {
+			log_fatal("%s %d %s\n", route, res->status, res->reason.c_str());
+		}
+		if (res->has_header("Set-Cookie")) {
+			cookie = res->get_header_value("Set-Cookie");
+		}
+		log_debug("get cookie: %s\n", cookie.c_str());
 
-	//发送请求
-	// {
-	// 	int ret = http.method(METHOD::GET, ""s, "/", header);
-	// 	if (ret < 0)
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
-	// 	log_debug("Write -> %d\n", ret);
-	// 	sleep(1);
-	// 	ret = http.recv();
-	// 	if (ret < 0) {
-	// 		log_debug("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// 		log_debug("%s\n", http.result_data().c_str());
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
-	// 	}
-	// 	log_debug("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// }
-	// log_println("get cookie...");
-	// log_printf("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// log_printf("cookie : %s\n", http.getCookie().c_str());
+		// 验证码
+		string verify_find =
+			"<input type=\"hidden\" name=\"auth_answer\" value=";
+		int pos1 = res->body.find(verify_find) + verify_find.size();
+		int pos2 = res->body.find(" >", pos1);
+		string auth_answer = res->body.substr(pos1, pos2 - pos1);
+		log_debug("auth_answer: %s\n", auth_answer.c_str());
+		verify_find = "<input type=\"hidden\" name=\"auth_ask\" value=";
+		pos1 = res->body.find(verify_find) + verify_find.size();
+		pos2 = res->body.find("= >", pos1);
+		string auth_ask = res->body.substr(pos1, pos2 - pos1);
+		log_debug("auth_ask: %s\n", auth_ask.c_str());
+
+		// post 数据
+		string data = "username="s + p.get("user").Str +
+					  "&password=" + p.get("passwd").Str +
+					  "&input_ans=" + auth_answer + "&auth_ask=" + auth_ask +
+					  "%3D&auth_answer=" + auth_answer + "&login=%B5%C7%C2%BC";
+		log_debug("post data: %s\n", data.c_str());
+
+		//post
+		res = cli.Post(route, httplib::Headers{{"Cookie", cookie}}, data);
+	}
 
 	// 获得 cookie 与验证码 post 登录
 	// {
 	// 	//验证码
-	// 	// const char *verify_find =
-	// 	// 	"<input type=\"hidden\" name=\"auth_answer\" value=";
-	// 	// string data = http.result_data();
-	// 	// int pos = data.find(verify_find) + strlen(verify_find);
-	// 	// int pos2 = data.find(">", pos);
 
 	// 	// post
 	// 	string post_str = "username="s + p.get("user").Str +
@@ -91,9 +97,11 @@ int main(int argc, char **argv) {
 	// 	sleep(1);
 	// 	ret = http.recv();
 	// 	if (ret < 0) {
-	// 		log_debug("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// 		log_debug("%s\n", http.result_data().c_str());
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
+	// 		log_debug("%d %s\n", http.result_code(),
+	// http.result_msg().c_str()); 		log_debug("%s\n",
+	// http.result_data().c_str()); 		log_fatal("%s:%d %s\n",
+	// __FILE__,
+	// __LINE__, strerror(errno));
 	// 	}
 	// }
 	// log_println("login...");
@@ -110,9 +118,11 @@ int main(int argc, char **argv) {
 	// 	sleep(1);
 	// 	ret = http.recv();
 	// 	if (ret < 0) {
-	// 		log_debug("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// 		log_debug("%s\n", http.result_data().c_str());
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
+	// 		log_debug("%d %s\n", http.result_code(),
+	// http.result_msg().c_str()); 		log_debug("%s\n",
+	// http.result_data().c_str()); 		log_fatal("%s:%d %s\n",
+	// __FILE__,
+	// __LINE__, strerror(errno));
 	// 	}
 	// }
 	// log_println("login...");
