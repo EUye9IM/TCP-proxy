@@ -23,8 +23,8 @@ int main(int argc, char **argv) {
 		  "被代理服务器 TCP 端口号 [0-65535:80]", false, agps::Value{.Int = 80},
 		  CHECK_INT_BETWEEN(0, 65535));
 	p.add(agps::Type::STR, 'l', "logname",
-		  "日志文件名（全路径） [/var/log/tcp-proxy-server.log]", false,
-		  agps::Value{.Str = "/var/log/tcp-proxy-server.log"});
+		  "日志文件名（全路径） [./tcp-proxy-server.log]", false,
+		  agps::Value{.Str = "./tcp-proxy-server.log"});
 	p.parse(argc, (const char **)argv);
 	if (p.isExist("help")) {
 		p.printUsage();
@@ -37,11 +37,6 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	/* 是否启用守护进程 */
-	if (p.get("daemon").Exist) {
-		my_daemon(0);
-	}
-
 	LogC::log_open(p.get("logname").Str);
 	
 	LogC::log_println("Server load");
@@ -50,6 +45,11 @@ int main(int argc, char **argv) {
 	LogC::log_printf("port       : %d\n", p.get("port").Int);
 	LogC::log_printf("proxy_ip   : %s\n", p.get("proxy_ip").Str);
 	LogC::log_printf("proxy_port : %d\n", p.get("proxy_port").Int);
+
+	/* 是否启用守护进程 */
+	if (p.get("daemon").Exist) {
+		my_daemon(1);
+	}
 
 	std::cout << "daemon     : " << (p.get("daemon").Exist ? "yes" : "no")
 			  << std::endl;

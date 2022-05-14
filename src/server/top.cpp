@@ -221,7 +221,7 @@ void Tcp_Proxy::init_proxy_server() {
 	address.sin_addr.s_addr = INADDR_ANY;
 
 	proxy_server->Bind((struct sockaddr *)&address, sizeof(address));
-	proxy_server->Listen(3);
+	proxy_server->Listen(500);
 }
 
 int Tcp_Proxy::accept_new_socket()
