@@ -1,5 +1,6 @@
 #ifndef LOGC
 #define LOGC
+#include <cstdio>
 namespace LogC {
 // flags
 const int LOG_FLAG_UTC = 1 << 0;
@@ -10,6 +11,7 @@ const int LOG_FLAG_DEBUG = 1 << 4;
 const int LOG_FLAG_FATAL = 1 << 5;
 
 int log_open(const char *file_path);
+int log_open(FILE *file);
 int log_set(int add_attr, int rm_attr = 0);
 
 int log_printf(const char *fmt, ...);

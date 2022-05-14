@@ -38,7 +38,7 @@ server:$(OBJ_COMMON) $(OBJ_SERVER)
 
 client:$(OBJ_COMMON) $(OBJ_CLIENT)
 	@echo Linking $@
-	@$(CXX) $(CXX_FLAGS) $(INCLUDE) $^ $(LIB) $(LIBRARIES) -o $@
+	@$(CXX) $(CXX_FLAGS) $(INCLUDE) $^ $(LIB) $(LIBRARIES) -o $@ -lpthread
 
 $(BUILD)/%.o: $(SRC)/%.$(EXTRA_NAME)
 	@echo Compiling $@
