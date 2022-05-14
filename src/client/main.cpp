@@ -8,7 +8,9 @@ using namespace LogC;
 using namespace std;
 int main(int argc, char **argv) {
 	log_open(stdout);
-	log_set(LOG_FLAG_DEBUG, LOG_FLAG_DATE);
+	// debug mode
+	log_set(LOG_FLAG_DEBUG);
+
 	// LOG_FLAG_DEBUG
 	agps::Parser p;
 	p.add(agps::Type::FLAG, 'h', "help", "输出参数列表");
@@ -69,14 +71,29 @@ int main(int argc, char **argv) {
 		log_debug("auth_ask: %s\n", auth_ask.c_str());
 
 		// post 数据
-		string data = "username="s + p.get("user").Str +
-					  "&password=" + p.get("passwd").Str +
-					  "&input_ans=" + auth_answer + "&auth_ask=" + auth_ask +
-					  "%3D&auth_answer=" + auth_answer + "&login=%B5%C7%C2%BC";
-		log_debug("post data: %s\n", data.c_str());
-
-		//post
-		res = cli.Post(route, httplib::Headers{{"Cookie", cookie}}, data);
+		httplib::Params params;
+		params.emplace("username", p.get("user").Str);
+		params.emplace("password", p.get("passwd").Str);
+		params.emplace("input_ans", auth_answer);
+		params.emplace("auth_ask", auth_ask + "%3D");
+		params.emplace("auth_answer", auth_answer);
+		params.emplace("login", "%B5%C7%C2%BC");
+		// post
+		res = cli.Post(route, httplib::Headers{{"Cookie", cookie}}, params);
+		if (res->status != 200) {
+			log_fatal("%s %d %s\n", route, res->status, res->reason.c_str());
+		}
+		if (res->has_header("Set-Cookie")) {
+			cookie = res->get_header_value("Set-Cookie");
+		}
+		// 验证密码
+		pos1 = res->body.find("alert");
+		log_debug("find(\"alert\") -> %d\n", pos1);
+		if (pos1 >= 0) {
+			log_println("用户名或密码错误！");
+			return 0;
+		}
+		log_println("登录成功！");
 	}
 
 	// 获得 cookie 与验证码 post 登录
