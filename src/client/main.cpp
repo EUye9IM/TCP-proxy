@@ -14,8 +14,8 @@ int main(int argc, char **argv) {
 	// LOG_FLAG_DEBUG
 	agps::Parser p;
 	p.add(agps::Type::FLAG, 'h', "help", "输出参数列表");
-	p.add(agps::Type::STR, 'H', "ip", "代理服务器 IP 地址 [162.168.1.236]",
-		  false, agps::Value{.Str = "192.168.1.236"}, CHECK_STR_IPADDR);
+	p.add(agps::Type::STR, 'H', "ip", "代理服务器 IP 地址 [10.10.108.117]",
+		  false, agps::Value{.Str = "10.10.108.117"}, CHECK_STR_IPADDR);
 	p.add(agps::Type::INT, 'P', "port", "代理服务器端口号 [0-65535:80]", false,
 		  agps::Value{.Int = 80}, CHECK_INT_BETWEEN(0, 65535));
 	p.add(agps::Type::STR, 'u', "user", "用户名");
