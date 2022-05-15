@@ -3,13 +3,14 @@
 #include <logc/logc.h>
 
 #include "http/httplib.h"
+#include <fstream>
 
 using namespace LogC;
 using namespace std;
 int main(int argc, char **argv) {
 	log_open(stdout);
 	// debug mode
-	log_set(LOG_FLAG_DEBUG);
+	// log_set(LOG_FLAG_DEBUG);
 
 	// LOG_FLAG_DEBUG
 	agps::Parser p;
@@ -22,6 +23,8 @@ int main(int argc, char **argv) {
 	p.add(agps::Type::STR, 'p', "passwd", "用户密码");
 	p.add(agps::Type::STR, 'd', "dstfile", "目的文件名");
 	p.add(agps::Type::STR, 's', "srcfile", "本地源文件目录");
+	p.add(agps::Type::STR, 'a', "action", "章节名（默认第0章", false,
+		  agps::Value{.Str = "第0章"});
 
 	p.parse(argc, (const char **)argv);
 	if (p.isExist("help")) {
@@ -40,6 +43,21 @@ int main(int argc, char **argv) {
 	log_debug("passwd  : %s\n", p.get("passwd").Str);
 	log_printf("dstfile : %s\n", p.get("dstfile").Str);
 	log_printf("srcfile : %s\n", p.get("srcfile").Str);
+	log_printf("action  : %s\n", p.get("action").Str);
+
+	ifstream srcfile(p.get("srcfile").Str, ios::binary | ios::ate);
+	if (!srcfile.is_open()) {
+		log_fatal("File %s open failed.\n", p.get("srcfile").Str);
+	}
+	int size = srcfile.tellg();
+	if (size < 0) {
+		log_fatal("Get file %s  size failed.\n", p.get("srcfile").Str);
+	}
+	string filecontent(size, '\0');
+	srcfile.seekg(ios::beg);
+	srcfile.read(&filecontent[0], size);
+	srcfile.close();
+	log_printf("文件读取成功。共 %d 字节\n", filecontent.size());
 
 	httplib::Client cli("http://"s + p.get("ip").Str + ":" +
 						to_string(p.get("port").Int));
@@ -90,61 +108,73 @@ int main(int argc, char **argv) {
 		pos1 = res->body.find("alert");
 		log_debug("find(\"alert\") -> %d\n", pos1);
 		if (pos1 >= 0) {
-			log_println("用户名或密码错误！");
-			return 0;
+			log_fatal("用户名或密码错误！\n");
 		}
-		log_println("登录成功！");
 	}
+	log_println("登录成功！");
 
-	// 获得 cookie 与验证码 post 登录
-	// {
-	// 	//验证码
+	// 文件递交
+	{
+		string route = "/lib/smain.php?action="s + p.get("action").Str;
+		auto res = cli.Get(route.c_str(), httplib::Headers{{"Cookie", cookie}});
+		if (res->status != 200) {
+			log_fatal("%s %d %s\n", route.c_str(), res->status, res->reason.c_str());
+		}
+		if (res->has_header("Set-Cookie")) {
+			cookie = res->get_header_value("Set-Cookie");
+		}
 
-	// 	// post
-	// 	string post_str = "username="s + p.get("user").Str +
-	// 					  "&password=" + p.get("passwd").Str +
-	// 					  "&input_ans=89&auth_ask=70+19=&auth_answer=89&"
-	// 					  "login=%B5%C7%C2%BC";
+		// 寻找递交文件表单名
 
-	// 	log_debug("data = %s\n", post_str.c_str());
-	// 	//递交 POST
-	// 	int ret = http.method(METHOD::POST, post_str, "/", header);
-	// 	if (ret < 0)
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
-	// 	sleep(1);
-	// 	ret = http.recv();
-	// 	if (ret < 0) {
-	// 		log_debug("%d %s\n", http.result_code(),
-	// http.result_msg().c_str()); 		log_debug("%s\n",
-	// http.result_data().c_str()); 		log_fatal("%s:%d %s\n",
-	// __FILE__,
-	// __LINE__, strerror(errno));
-	// 	}
-	// }
-	// log_println("login...");
-	// log_printf("%d %s\n", http.result_code(), http.result_msg().c_str());
+		int pos = res->body.find("<td>"s + p.get("dstfile").Str + "</td>");
+		if (pos < 0) {
+			log_fatal("文件 %s 不在 %s 内\n", p.get("dstfile").Str,
+					  route.c_str());
+		}
+		pos = res->body.find("<input type=\"file\"", pos);
+		const char *find_str = "name=\"";
+		pos = res->body.find(find_str, pos);
+		pos += strlen(find_str);
+		int pos2 = res->body.find("\"", pos);
+		if (pos2 < 0) {
+			log_fatal("文件 %s 不在 %s 内\n", p.get("dstfile").Str,
+					  route.c_str());
+		}
+		string post_name = res->body.substr(pos, pos2 - pos);
+		log_debug("post 字段名 %s\n", post_name.c_str());
 
-	// {
-	// 	http.clearCookie() ;
-	// 	http.addCookie(
-	// 		Header{{"PHPSESSID", "gattado47gpcsbl9m6421rrvpl"}});
-	// 	//递交 POST
-	// 	int ret = http.method(METHOD::GET, ""s, "/lib/smain.php", header);
-	// 	if (ret < 0)
-	// 		log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
-	// 	sleep(1);
-	// 	ret = http.recv();
-	// 	if (ret < 0) {
-	// 		log_debug("%d %s\n", http.result_code(),
-	// http.result_msg().c_str()); 		log_debug("%s\n",
-	// http.result_data().c_str()); 		log_fatal("%s:%d %s\n",
-	// __FILE__,
-	// __LINE__, strerror(errno));
-	// 	}
-	// }
-	// log_println("login...");
-	// log_printf("%d %s\n", http.result_code(), http.result_msg().c_str());
-	// log_printf("%s\n", http.result_data().c_str());
+		// post
+		httplib::MultipartFormDataItems items = {
+			{post_name, filecontent, p.get("dstfile").Str,
+			 "application/octet-stream"},
+			{"submit", "提交1题", "", ""},
+		};
+		res = cli.Post(route.c_str(), httplib::Headers{{"Cookie", cookie}},
+					   items);
+		if (res->status != 200) {
+			log_fatal("%s %d %s\n", route, res->status, res->reason.c_str());
+		}
+		if (res->has_header("Set-Cookie")) {
+			cookie = res->get_header_value("Set-Cookie");
+		}
+		pos = res->body.find("<input type=\"file\"", pos);
+
+		find_str = "alert(";
+		pos = res->body.find(find_str);
+		if (pos < 0) {
+			log_fatal("文件提交失败\n");
+		}
+		pos = res->body.find("\\n", pos);
+		if (pos < 0) {
+			log_fatal("文件提交失败\n");
+		}
+		pos += 2;
+		pos2 = res->body.find("\\n", pos);
+		if (pos2 < 0) {
+			log_fatal("文件提交失败\n");
+		}
+		log_println(res->body.substr(pos, pos2 - pos).c_str());
+	}
 
 	return 0;
 }
