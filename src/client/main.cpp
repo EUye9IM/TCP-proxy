@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 		res = cli.Post(route.c_str(), httplib::Headers{{"Cookie", cookie}},
 					   items);
 		if (res->status != 200) {
-			log_fatal("%s %d %s\n", route, res->status, res->reason.c_str());
+			log_fatal("%s %d %s\n", route.c_str(), res->status, res->reason.c_str());
 		}
 		if (res->has_header("Set-Cookie")) {
 			cookie = res->get_header_value("Set-Cookie");
