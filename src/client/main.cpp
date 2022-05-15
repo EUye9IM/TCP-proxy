@@ -3,13 +3,14 @@
 #include <logc/logc.h>
 
 #include "http/httplib.h"
+#include <fstream>
 
 using namespace LogC;
 using namespace std;
 int main(int argc, char **argv) {
 	log_open(stdout);
 	// debug mode
-	log_set(LOG_FLAG_DEBUG);
+	// log_set(LOG_FLAG_DEBUG);
 
 	// LOG_FLAG_DEBUG
 	agps::Parser p;
@@ -43,6 +44,20 @@ int main(int argc, char **argv) {
 	log_printf("dstfile : %s\n", p.get("dstfile").Str);
 	log_printf("srcfile : %s\n", p.get("srcfile").Str);
 	log_printf("action  : %s\n", p.get("action").Str);
+
+	ifstream srcfile(p.get("srcfile").Str, ios::binary | ios::ate);
+	if (!srcfile.is_open()) {
+		log_fatal("File %s open failed.\n", p.get("srcfile").Str);
+	}
+	int size = srcfile.tellg();
+	if (size < 0) {
+		log_fatal("Get file %s  size failed.\n", p.get("srcfile").Str);
+	}
+	string filecontent(size, '\0');
+	srcfile.seekg(ios::beg);
+	srcfile.read(&filecontent[0], size);
+	srcfile.close();
+	log_printf("文件读取成功。共 %d 字节\n", filecontent.size());
 
 	httplib::Client cli("http://"s + p.get("ip").Str + ":" +
 						to_string(p.get("port").Int));
@@ -103,7 +118,7 @@ int main(int argc, char **argv) {
 		string route = "/lib/smain.php?action="s + p.get("action").Str;
 		auto res = cli.Get(route.c_str(), httplib::Headers{{"Cookie", cookie}});
 		if (res->status != 200) {
-			log_fatal("%s %d %s\n", route, res->status, res->reason.c_str());
+			log_fatal("%s %d %s\n", route.c_str(), res->status, res->reason.c_str());
 		}
 		if (res->has_header("Set-Cookie")) {
 			cookie = res->get_header_value("Set-Cookie");
@@ -130,7 +145,7 @@ int main(int argc, char **argv) {
 
 		// post
 		httplib::MultipartFormDataItems items = {
-			{post_name, "123120000000000000000000003123", p.get("dstfile").Str,
+			{post_name, filecontent, p.get("dstfile").Str,
 			 "application/octet-stream"},
 			{"submit", "提交1题", "", ""},
 		};
