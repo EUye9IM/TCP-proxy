@@ -71,11 +71,19 @@ namespace New {
 		/* 创建新的connection并加入epoll */
 		void new_connection();	
 
-		/* 删除连接并从epoll删除 */
-		void close_connection(Connection* conn);	
+		/* 删除_fd所表示的连接并从epoll删除 */
+		void close_connection(int _fd);	
 
 		/* 删除服务器与代理服务器的连接，并从conns中移除 */
-		int delete_socket_conn(int fd);
+		int delete_socket_conn(int _fd);
+
+		/* 判断某一端fd是否存在 */
+		bool is_exist(int _fd);
+
+		/* 判断连接另一端是否存在 */
+		// bool is_other_exist();
+
+
 
 		int port;				// 处理的端口
 		std::string proxy_ip;	// 代理IP地址
@@ -86,6 +94,9 @@ namespace New {
 
 		// 存储服务器与代理服务器的连接
 		std::vector<Anakin::Socket_Connect*> conns;	
+
+		// 需要维护一个fd->connection*的map，否则需要使用指针的指针
+		std::map<int, Connection*> conn_map;
 	};
 
 };

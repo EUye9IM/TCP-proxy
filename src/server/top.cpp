@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <logc/logc.h>
+#include <utility>
 
 #include "connection.h"
 #include "mysocket.hpp"
@@ -43,6 +44,7 @@ Tcp_Proxy::~Tcp_Proxy()
 
 	close(epfd);
 	conns.clear();
+	conn_map.clear();
 }
 
 void Tcp_Proxy::Run() {
@@ -59,22 +61,25 @@ void Tcp_Proxy::Run() {
 		}
 
 		for (int i = 0; i < nfds; ++i) {
-			// 获取连接指针信息，NULL则continue
-			auto conn = (Connection*)events[i].data.ptr;
-			if (conn == NULL)
+
+			int fd = events[i].data.fd;
+			// 如果fd所代表的连接已经不存在
+			if (!is_exist(fd))
 				continue;
+			
+			auto conn = conn_map.at(fd);
 
 			// 此处需要添加挂断等事件
 			if (events[i].events & (EPOLLERR | EPOLLHUP)) {
 				std::cout << "出现挂断事件" << std::endl;
-				close_connection(conn);
+				close_connection(fd);
 				continue;
 			}
 			
 			// 事件可读
 			if (events[i].events & EPOLLIN) {
 				// listenfd 连接处理
-				if (conn->get_fd() == proxy_server->getfd()) {
+				if (fd == proxy_server->getfd()) {
 					// std::cout << "listenfd 可读" << std::endl;
 					new_connection();
 					continue;
@@ -82,7 +87,7 @@ void Tcp_Proxy::Run() {
 				// clientfd 连接处理
 				else {
 					if (!conn->write_to_buf()) {
-						close_connection(conn);
+						close_connection(fd);
 						continue;
 					}
 				}
@@ -115,8 +120,10 @@ void Tcp_Proxy::epoll_add_listenfd()
 		LogC::log_fatal("%s:%d %s\n", __FILE__, __LINE__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	// 添加至 conn_map
+	conn_map.insert(std::make_pair(listenfd, conn));
 
-	ev.data.ptr = conn;
+	ev.data.fd = listenfd;
 	ev.events = EPOLLIN;   // 使用水平触发模式
 
 	// 设置epoll事件
@@ -147,30 +154,42 @@ void Tcp_Proxy::new_connection() {
 	
 	// 加入epoll
 	struct epoll_event ev;
-	ev.data.ptr = conn;
+	ev.data.fd = server_fd;
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, server_fd, &ev);
 	Anakin::checkerror(ret, "epoll_ctl:conn_sock");
 
-	ev.data.ptr = conn->get_other();
+	ev.data.fd = client_fd;
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	ret = epoll_ctl(epfd, EPOLL_CTL_ADD, client_fd, &ev);
 	Anakin::checkerror(ret, "epoll_ctl:conn_sock");
 
+	// 加入 conn_map
+	conn_map.insert(std::make_pair(server_fd, conn));
+	conn_map.insert(std::make_pair(client_fd, conn->get_other()));
 }
 
-void Tcp_Proxy::close_connection(Connection* conn)
+void Tcp_Proxy::close_connection(int _fd)
 {
-	if (conn->get_other() == NULL) {
-		// 目前还没有遇到这种情形
-		std::cout << "conn other null" << std::endl;
+	// 首先判断_fd连接是否存在
+	if (!is_exist(_fd))
 		return;
-	}
+	
+	auto conn = conn_map.at(_fd);
 	// fd 和 sfd
 	int fd = conn->get_fd();
+
+	if (conn->get_other() == NULL) {
+		// other为NULL，说明为listenfd
+		std::cout << "代理服务器关闭" << std::endl;
+		delete conn;
+		conn_map.erase(fd);
+		return;
+	}
+
 	int sfd = conn->get_other()->get_fd();
 
-	// 首先从 epoll 中移除connection
+	// 首先从 epoll 中移除 fd
 	int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
 	Anakin::checkerror(ret, "epoll_ctl:delete");
 	ret = epoll_ctl(epfd, EPOLL_CTL_DEL, sfd, NULL);
@@ -179,7 +198,6 @@ void Tcp_Proxy::close_connection(Connection* conn)
 	// 释放conn 以及 conn->other
 	conn->delete_other();
 	delete conn;
-	conn = NULL;
 
 	// 释放套接字
 	if (proxy_server->EraseConn(fd)) {
@@ -190,6 +208,10 @@ void Tcp_Proxy::close_connection(Connection* conn)
 		delete_socket_conn(fd);
 	}
 
+	// conn_map删除
+	conn_map.erase(fd);
+	conn_map.erase(sfd);
+
 	// std::cout << "连接中断" << std::endl;
 }
 
@@ -198,12 +220,19 @@ int Tcp_Proxy::delete_socket_conn(int fd)
 	for (auto it = conns.begin(); it != conns.end(); it++) {
 		if ((*it)->getfd() == fd) {
 			delete *it;
-			(*it) = NULL;
 			conns.erase(it);
 			return 1;
 		}
 	}
 	return 0;
+}
+
+bool Tcp_Proxy::is_exist(int _fd)
+{
+	if (conn_map.find(_fd) != conn_map.end()) {
+		return true;
+	}
+	return false;
 }
 
 void Tcp_Proxy::init_proxy_server() {
