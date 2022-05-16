@@ -144,8 +144,13 @@ int main(int argc, char **argv) {
 		log_debug("post 字段名 %s\n", post_name.c_str());
 
 		// post
+		// httplib::MultipartFormDataItems items = {
+		// 	{post_name, filecontent, p.get("dstfile").Str,
+		// 	 "application/octet-stream"},
+		// 	{"submit", "提交1题", "", ""},
+		// };
 		httplib::MultipartFormDataItems items = {
-			{post_name, filecontent, p.get("dstfile").Str,
+			{post_name, filecontent, p.get("srcfile").Str,
 			 "application/octet-stream"},
 			{"submit", "提交1题", "", ""},
 		};
