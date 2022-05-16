@@ -1,10 +1,12 @@
 #include "connection.h"
 #include "top.h"
+#include <memory>
 #include <mydaemon.h>
 #include <agps/agps.h>
 #include <agps/check.h>
 #include <exception>
 #include <logc/logc.h>
+#include <stdexcept>
 
 int main(int argc, char **argv) {
 	// Top top;
@@ -62,15 +64,20 @@ int main(int argc, char **argv) {
 	int port = p.get("port").Int;
 	std::string proxy_ip = p.get("proxy_ip").Str;
 	int proxy_port = p.get("proxy_port").Int;
-	auto tcp_proxy = new New::Tcp_Proxy(proxy_ip, proxy_port, port);
-	try {
-		tcp_proxy->Run();
-	}
-	catch (std::exception& e) {
-		std::cerr << "Exception caught: " << e.what() << std::endl;
+
+	for (int i = 0; i < 10; i++) {
+		std::cout << "代理服务第 " << i + 1 << " 次启动" << std::endl;
+		auto tcp_proxy = 
+			std::make_unique<New::Tcp_Proxy>(proxy_ip, proxy_port, port);
+		try {
+			tcp_proxy->Run();
+		}
+		catch (const std::runtime_error& e) {
+			std::cerr << "Run time error: " << e.what() << std::endl;
+			std::cout << "代理服务重新启动..." << std::endl;
+		}
+		sleep(10);
 	}
 	
-	delete tcp_proxy;
-
 	return 0;
 }

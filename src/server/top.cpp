@@ -2,30 +2,12 @@
 #include <sys/epoll.h>
 #include <logc/logc.h>
 #include <utility>
+#include <stdexcept>
 
 #include "connection.h"
 #include "mysocket.hpp"
 #include "top.h"
 
-// namespace Old {
-// void Top::run() {
-// 	while (1) {
-
-// 		// epoll
-
-// 		// 拿 fd 检查。
-// 		//    Connection::run()
-// 		// or delete Connection
-// 		// or accept(); new Connection
-
-// 		// 如果是 connection
-// 		// run，fd_set中移除相关fd，再调用Connection::fdSet()拿取新的
-// 		// 其他情况也有 fd_set 的变动
-
-// 		// 以 fd_set_read 和 fd_set_write 更新epoll用的队列
-// 	}
-// }
-// } // namespace Old
 namespace New {
 
 Tcp_Proxy::Tcp_Proxy(std::string _proxy_ip, int _proxy_port, int _port)
@@ -40,10 +22,14 @@ Tcp_Proxy::Tcp_Proxy(std::string _proxy_ip, int _proxy_port, int _port)
 Tcp_Proxy::~Tcp_Proxy()
 {
 	delete proxy_server;
-	proxy_server = NULL;
 
 	close(epfd);
+	for (const auto& con_sock : conns)
+		delete con_sock;
 	conns.clear();
+
+	for  (const auto& conn : conn_map)
+		delete conn.second;
 	conn_map.clear();
 }
 
@@ -124,7 +110,7 @@ void Tcp_Proxy::epoll_add_listenfd()
 	conn_map.insert(std::make_pair(listenfd, conn));
 
 	ev.data.fd = listenfd;
-	ev.events = EPOLLIN;   // 使用水平触发模式
+	ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;   // 使用水平触发模式
 
 	// 设置epoll事件
 	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, listenfd, &ev);
@@ -181,10 +167,11 @@ void Tcp_Proxy::close_connection(int _fd)
 
 	if (conn->get_other() == NULL) {
 		// other为NULL，说明为listenfd
-		std::cout << "代理服务器关闭" << std::endl;
-		delete conn;
-		conn_map.erase(fd);
-		return;
+		throw std::runtime_error("listen socket close.");
+		// std::cout << "代理服务器关闭" << std::endl;
+		// delete conn;
+		// conn_map.erase(fd);
+		// return;
 	}
 
 	int sfd = conn->get_other()->get_fd();

@@ -9,37 +9,6 @@
 #include <set>
 #include <sys/epoll.h>
 
-// namespace Old {
-// class Top {
-// public: // 可能需要其他参数
-// 	Top();
-// 	~Top();
-// 	/**
-// 	 * @brief 运行代理服务
-// 	 * @param
-// 	 * @return
-// 	 **/
-// 	void run();
-
-// private:
-// 	/**
-// 	 * @brief accept 了一个新连接
-// 	 * @param fd accept 的新 socket
-// 	 * @return
-// 	 **/
-// 	void _newConnection(int fd);
-// 	/**
-// 	 * @brief close 了一个连接
-// 	 * @param fd 收到 close 的 socket
-// 	 * @return
-// 	 **/
-// 	void _deleteConnection(int fd);
-// 	std::set<Connection *> _connections; // connection 的集合
-// 	// std::map<int, Connection*>//socket 到 Connection 的映射
-// 	// Log _log; // 可能有的 log 类
-// };
-// }
-
 namespace New {
 	class Tcp_Proxy {
 	public:
@@ -79,11 +48,6 @@ namespace New {
 
 		/* 判断某一端fd是否存在 */
 		bool is_exist(int _fd);
-
-		/* 判断连接另一端是否存在 */
-		// bool is_other_exist();
-
-
 
 		int port;				// 处理的端口
 		std::string proxy_ip;	// 代理IP地址
