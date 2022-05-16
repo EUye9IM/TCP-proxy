@@ -37,3 +37,4 @@
 /.vscode/
 # 上传至代理服务器的脚本文件
 upload.sh
+file/

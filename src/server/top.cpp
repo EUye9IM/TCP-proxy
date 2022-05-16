@@ -95,7 +95,7 @@ void Tcp_Proxy::Run() {
 			// ÊÂ¼þ¿ÉÐ´
 			if (events[i].events & EPOLLOUT) {
 				if (!conn->read_from_buf()) {
-					conn->close_pipes();
+					close_connection(fd);
 				}
 			}
 		}
