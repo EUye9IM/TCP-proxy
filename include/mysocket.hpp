@@ -155,7 +155,7 @@ namespace Anakin {
         sockaddr_in GetConn();
 
         // 获取所有客户端的连接关系
-        conns GetConns() {
+        const conns& GetConns() {
             return client_conns;
         }
 

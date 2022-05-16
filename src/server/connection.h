@@ -26,6 +26,7 @@ public:
 	bool write_to_buf();  // fd向buf写数据
 	bool read_from_buf(); // 从other->buf读数据至fd
 	const int get_fd();		  // 获取fd
+	size_t get_count();		// 获取_count
 	Connection*& get_other();	// 获取other，此处返回引用值，注意！
 
 private:
@@ -33,6 +34,7 @@ private:
 	Connection *other; // 连接的另一端 	this->other other->this
 	int fd;
 	struct buffer buf; // buffer也是单向的，方向为fd写入buf
+	size_t _count = 0;	// 记录经过buf的字节数
 };
 
 }; // namespace New

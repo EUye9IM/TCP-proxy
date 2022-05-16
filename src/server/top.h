@@ -49,6 +49,13 @@ namespace New {
 		/* 判断某一端fd是否存在 */
 		bool is_exist(int _fd);
 
+		/* 判断fd是否是服务端 socket */
+		bool _is_server(int _fd);
+
+		/* 单次连接写入日志 */
+		void _record_conn_log
+			(const int sfd, const int ccount, const int scount);
+
 		int port;				// 处理的端口
 		std::string proxy_ip;	// 代理IP地址
 		int proxy_port;			// 代理端口

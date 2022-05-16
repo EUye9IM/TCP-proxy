@@ -38,6 +38,10 @@ int main(int argc, char **argv) {
 		p.printUsage();
 		return 0;
 	}
+	/* 是否启用守护进程 */
+	if (p.get("daemon").Exist) {
+		my_daemon(1);
+	}
 
 	LogC::log_open(p.get("logname").Str);
 	
@@ -47,11 +51,6 @@ int main(int argc, char **argv) {
 	LogC::log_printf("port       : %d\n", p.get("port").Int);
 	LogC::log_printf("proxy_ip   : %s\n", p.get("proxy_ip").Str);
 	LogC::log_printf("proxy_port : %d\n", p.get("proxy_port").Int);
-
-	/* 是否启用守护进程 */
-	if (p.get("daemon").Exist) {
-		my_daemon(1);
-	}
 
 	std::cout << "daemon     : " << (p.get("daemon").Exist ? "yes" : "no")
 			  << std::endl;
@@ -78,6 +77,8 @@ int main(int argc, char **argv) {
 		}
 		sleep(10);
 	}
+
+	LogC::log_close();
 	
 	return 0;
 }

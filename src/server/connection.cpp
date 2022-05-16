@@ -2,6 +2,7 @@
 #include <asm-generic/errno-base.h>
 #include <asm-generic/errno.h>
 #include <cerrno>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -43,6 +44,11 @@ void Connection::init_connection() {
 }
 
 const int Connection::get_fd() { return fd; }
+
+size_t Connection::get_count()
+{
+	return _count;
+}
 
 // 返回引用的设计只是为了删除操作的维护
 Connection *&Connection::get_other() { return other; }
@@ -94,6 +100,7 @@ bool Connection::write_to_buf() {
 		if (n > 0) {
 			this->buf.len += n;
 			cnt += n;
+			_count += n;
 		}
 			
 		if (n == 0)

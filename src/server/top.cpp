@@ -1,3 +1,6 @@
+#include <cstddef>
+#include <iomanip>
+#include <ios>
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <logc/logc.h>
@@ -168,10 +171,6 @@ void Tcp_Proxy::close_connection(int _fd)
 	if (conn->get_other() == NULL) {
 		// other为NULL，说明为listenfd
 		throw std::runtime_error("listen socket close.");
-		// std::cout << "代理服务器关闭" << std::endl;
-		// delete conn;
-		// conn_map.erase(fd);
-		// return;
 	}
 
 	int sfd = conn->get_other()->get_fd();
@@ -182,24 +181,49 @@ void Tcp_Proxy::close_connection(int _fd)
 	ret = epoll_ctl(epfd, EPOLL_CTL_DEL, sfd, NULL);
 	Anakin::checkerror(ret, "epoll_ctl:delete");
 
+	// 获取到本次连接读取的信息
+	size_t ccount = conn->get_count();
+	size_t scount = conn->get_other()->get_count();
+
 	// 释放conn 以及 conn->other
 	conn->delete_other();
 	delete conn;
 
-	// 释放套接字
-	if (proxy_server->EraseConn(fd)) {
-		// 删除成功，说明fd为服务端，sfd为客户端，删除
-		delete_socket_conn(sfd);
-	} else {
-		proxy_server->EraseConn(sfd);
-		delete_socket_conn(fd);
+	// fd 为服务端，交换 sfd<->fd，保证 sfd 为服务端
+	if (_is_server(fd)) {
+		std::swap(fd, sfd);
+		std::swap(ccount, scount);
 	}
+
+	/* 日志记录 */
+	_record_conn_log(sfd, ccount, scount);
+
+	// 释放套接字
+	proxy_server->EraseConn(sfd);
+	delete_socket_conn(fd);
 
 	// conn_map删除
 	conn_map.erase(fd);
 	conn_map.erase(sfd);
 
 	// std::cout << "连接中断" << std::endl;
+}
+
+void Tcp_Proxy::_record_conn_log
+	(const int sfd, const int ccount, const int scount)
+{
+	auto& conns = proxy_server->GetConns();
+	auto& address = conns.at(sfd);
+	// 打印连接的client端的信息
+	char client_ip[INET_ADDRSTRLEN] = {0};
+	inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
+	std::cout << "close   " << client_ip << ":" << ntohs(address.sin_port)
+				<< std::endl;
+	std::cout << "up:   " << scount << " byte" << std::endl
+			  << "down: " << ccount << " byte" << std::endl;
+	LogC::log_printf("close   %s:%d\n", client_ip, ntohs(address.sin_port));
+	LogC::log_printf("up:%d byte, down:%d byte\n", scount, ccount);
+
 }
 
 int Tcp_Proxy::delete_socket_conn(int fd)
@@ -212,6 +236,15 @@ int Tcp_Proxy::delete_socket_conn(int fd)
 		}
 	}
 	return 0;
+}
+
+bool Tcp_Proxy::_is_server(int _fd)
+{
+	auto &conns = proxy_server->GetConns();
+	if (conns.find(_fd) != conns.end()) {
+		return true;
+	}
+	return false;
 }
 
 bool Tcp_Proxy::is_exist(int _fd)
