@@ -118,7 +118,8 @@ int main(int argc, char **argv) {
 		string route = "/lib/smain.php?action="s + p.get("action").Str;
 		auto res = cli.Get(route.c_str(), httplib::Headers{{"Cookie", cookie}});
 		if (res->status != 200) {
-			log_fatal("%s %d %s\n", route.c_str(), res->status, res->reason.c_str());
+			log_fatal("%s %d %s\n", route.c_str(), res->status,
+					  res->reason.c_str());
 		}
 		if (res->has_header("Set-Cookie")) {
 			cookie = res->get_header_value("Set-Cookie");
@@ -144,20 +145,21 @@ int main(int argc, char **argv) {
 		log_debug("post 字段名 %s\n", post_name.c_str());
 
 		// post
-		// httplib::MultipartFormDataItems items = {
-		// 	{post_name, filecontent, p.get("dstfile").Str,
-		// 	 "application/octet-stream"},
-		// 	{"submit", "提交1题", "", ""},
-		// };
 		httplib::MultipartFormDataItems items = {
-			{post_name, filecontent, p.get("srcfile").Str,
+			{post_name, filecontent, p.get("dstfile").Str,
 			 "application/octet-stream"},
 			{"submit", "提交1题", "", ""},
 		};
+		// httplib::MultipartFormDataItems items = {
+		// 	{post_name, filecontent, p.get("srcfile").Str,
+		// 	 "application/octet-stream"},
+		// 	{"submit", "提交1题", "", ""},
+		// };
 		res = cli.Post(route.c_str(), httplib::Headers{{"Cookie", cookie}},
 					   items);
 		if (res->status != 200) {
-			log_fatal("%s %d %s\n", route.c_str(), res->status, res->reason.c_str());
+			log_fatal("%s %d %s\n", route.c_str(), res->status,
+					  res->reason.c_str());
 		}
 		if (res->has_header("Set-Cookie")) {
 			cookie = res->get_header_value("Set-Cookie");
